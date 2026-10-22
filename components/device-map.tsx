@@ -1,24 +1,13 @@
 "use client"
 
 import { useState, Suspense } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import type { LeafletMouseEvent } from "leaflet"
 import { useMapEvents } from "react-leaflet"
 import { Edit, Move, Plus, Trash2 } from "lucide-react"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
-  Map,
-  MapMarker,
-  MapTileLayer,
-  MapTooltip,
-} from "@/components/ui/map"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Map, MapMarker, MapTileLayer, MapTooltip } from "@/components/ui/map"
 import {
   Dialog,
   DialogContent,
@@ -30,65 +19,63 @@ import {
 import { Button } from "@/components/ui/button"
 import { DeviceFormFields } from "@/components/device-form-fields"
 import { DeviceTypeIcon } from "@/components/device-type-display"
-import {
-  createDeviceFormDefaults,
-  deviceSchema,
-  type DeviceFormValues,
-} from "@/lib/device-schema"
+import { createDeviceFormDefaults } from "@/config/device-config"
+import { deviceSchema } from "@/lib/device-schema"
+import type { DeviceFormValues } from "@/interface/device-interface"
 import { useDeviceStore } from "@/stores/device-store"
 import { useMarkers } from "@/hooks/use-markers"
 
-function MapClickHandler({
-  onMapClick,
-}: {
-  onMapClick: (event: LeafletMouseEvent) => void
-}) {
+function MapClickHandler({ onMapClick }: { onMapClick: (event: LeafletMouseEvent) => void }) {
   useMapEvents({ click: onMapClick })
   return null
 }
 
-export function DeviceMap() {
-  const { markers, addMarker, updateMarker, deleteMarker, moveMarker } =
-    useMarkers()
+export function DeviceMap({
+  markers,
+  isLoading,
+  error,
+  operationResult,
+  clearOperationResult,
+  addMarker,
+  updateMarker,
+  deleteMarker,
+  moveMarker,
+}: ReturnType<typeof useMarkers>) {
   const selectedDeviceId = useDeviceStore((state) => state.selectedDeviceId)
-  const setSelectedMarkerId = useDeviceStore(
-    (state) => state.setSelectedDeviceId
-  )
+  const setSelectedMarkerId = useDeviceStore((state) => state.setSelectedDeviceId)
   const [movingMarkerId, setMovingMarkerId] = useState<string | null>(null)
   const [formMode, setFormMode] = useState<"add" | "edit" | null>(null)
   const [editingMarkerId, setEditingMarkerId] = useState<string | null>(null)
-  const [isPickingLocationFor, setIsPickingLocationFor] = useState<
-    "add" | "edit" | null
-  >(null)
+  const [isPickingLocationFor, setIsPickingLocationFor] = useState<"add" | "edit" | null>(null)
   const form = useForm<DeviceFormValues>({
-    resolver: zodResolver(deviceSchema),
+    resolver: zodResolver(deviceSchema as never) as Resolver<DeviceFormValues>,
     defaultValues: createDeviceFormDefaults(),
   })
 
-  const handleMapClick = (event: LeafletMouseEvent) => {
+  const handleMapClick = async (event: LeafletMouseEvent) => {
     const target = event.originalEvent.target
-    if (target instanceof Element && target.closest(".leaflet-marker-icon")) {
-      return
-    }
+    if (target instanceof Element && target.closest(".leaflet-marker-icon")) return
 
     if (isPickingLocationFor) {
+      const formModeToResume = isPickingLocationFor
       form.setValue(
         "coordinate",
         { lat: event.latlng.lat, lng: event.latlng.lng },
         { shouldDirty: true, shouldValidate: true }
       )
-      setFormMode(isPickingLocationFor)
       setIsPickingLocationFor(null)
+      void form.trigger("name").then(() => setFormMode(formModeToResume))
       return
     }
 
     if (movingMarkerId) {
-      moveMarker(movingMarkerId, event.latlng)
+      await moveMarker(movingMarkerId, event.latlng)
       setMovingMarkerId(null)
     }
   }
 
   const handleOpenAddForm = () => {
+    clearOperationResult()
     form.reset(createDeviceFormDefaults())
     setEditingMarkerId(null)
     setFormMode("add")
@@ -100,13 +87,17 @@ export function DeviceMap() {
       return
     }
 
+    clearOperationResult()
     form.reset({
       name: marker.name,
       type: marker.type,
       coordinate: marker.coordinate,
       status: marker.status,
-      attributes: marker.attributes,
-      telemetry: marker.telemetry,
+      attributes: {
+        ...createDeviceFormDefaults().attributes,
+        ...Object.fromEntries(Object.entries(marker.attributes).filter(([, value]) => typeof value === "string")),
+      },
+      telemetry: marker.telemetry ?? createDeviceFormDefaults().telemetry,
       tags: marker.tags,
     })
     setEditingMarkerId(marker.id)
@@ -114,30 +105,44 @@ export function DeviceMap() {
     setFormMode("edit")
   }
 
-  const handleSubmit = (values: DeviceFormValues) => {
+  const handleSubmit = async (values: DeviceFormValues) => {
     if (formMode === "edit" && editingMarkerId) {
-      updateMarker(editingMarkerId, values)
+      const result = await updateMarker(editingMarkerId, values)
+      if (!result.success) return
     } else if (formMode === "add") {
-      addMarker(values)
+      const result = await addMarker(values)
+      if (!result.success) return
     }
     setFormMode(null)
     setEditingMarkerId(null)
   }
 
-  const selectedMarker = markers.find(
-    (marker) => marker.id === selectedDeviceId
-  )
+  const handleDeleteMarker = async () => {
+    if (!selectedDeviceId) return
+
+    const result = await deleteMarker(selectedDeviceId)
+    if (result.success) {
+      setSelectedMarkerId(null)
+    }
+  }
+
+  const selectedMarker = markers.find((marker) => marker.id === selectedDeviceId)
 
   return (
     <Card className="mb-8 lg:ml-4">
       <CardHeader>
         <CardTitle>Device Map</CardTitle>
         <CardDescription>
-          Add a device by choosing its location on the map. Click a device to edit,
-          move, or delete it.
+          Add a device by choosing its location on the map. Click a device to edit, move, or delete it.
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {isLoading && <p className="mb-4 text-sm text-muted-foreground">Loading devices...</p>}
+        {error && (
+          <p role="alert" className="mb-4 text-sm text-destructive">
+            Failed to load devices: {error}
+          </p>
+        )}
         <div className="mb-4">
           <Button onClick={handleOpenAddForm}>
             <Plus className="mr-2 h-4 w-4" />
@@ -158,14 +163,17 @@ export function DeviceMap() {
           <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-lg">
             <form onSubmit={form.handleSubmit(handleSubmit)}>
               <DialogHeader>
-                <DialogTitle>
-                  {formMode === "edit" ? "Edit Device" : "Add New Device"}
-                </DialogTitle>
+                <DialogTitle>{formMode === "edit" ? "Edit Device" : "Add New Device"}</DialogTitle>
                 <DialogDescription>
-                  Update the device payload and choose its location on the map.
-                  Device ID and timestamps are managed automatically.
+                  Update the device payload and choose its location on the map. Device ID and timestamps are managed
+                  automatically.
                 </DialogDescription>
               </DialogHeader>
+              {form.formState.isSubmitted && Object.keys(form.formState.errors).length > 0 && (
+                <p role="alert" className="mt-4 text-sm text-destructive">
+                  Data masih kosong atau belum valid. Tolong lengkapi form.
+                </p>
+              )}
               <DeviceFormFields
                 form={form}
                 onChooseLocation={() => {
@@ -195,6 +203,27 @@ export function DeviceMap() {
         </Dialog>
 
         <Dialog
+          open={operationResult !== null}
+          onOpenChange={(open) => {
+            if (!open) clearOperationResult()
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {operationResult?.success
+                  ? `Device ${operationResult.operation === "remove" ? "removal" : operationResult.operation} successful`
+                  : `Device ${operationResult?.operation === "remove" ? "removal" : (operationResult?.operation ?? "operation")} failed`}
+              </DialogTitle>
+              <DialogDescription>{operationResult?.message}</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button onClick={clearOperationResult}>Done</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
           open={selectedDeviceId !== null}
           onOpenChange={(open) => {
             if (!open) {
@@ -205,16 +234,10 @@ export function DeviceMap() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Device Actions</DialogTitle>
-              <DialogDescription>
-                Choose an action for {selectedMarker?.name}.
-              </DialogDescription>
+              <DialogDescription>Choose an action for {selectedMarker?.name}.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-2">
-              <Button
-                variant="outline"
-                className="justify-start"
-                onClick={handleOpenEditForm}
-              >
+              <Button variant="outline" className="justify-start" onClick={handleOpenEditForm}>
                 <Edit />
                 Edit Device
               </Button>
@@ -231,16 +254,7 @@ export function DeviceMap() {
                 <Move />
                 Move Position
               </Button>
-              <Button
-                variant="destructive"
-                className="justify-start"
-                onClick={() => {
-                  if (selectedDeviceId) {
-                    deleteMarker(selectedDeviceId)
-                    setSelectedMarkerId(null)
-                  }
-                }}
-              >
+              <Button variant="destructive" className="justify-start" onClick={() => void handleDeleteMarker()}>
                 <Trash2 />
                 Delete Device
               </Button>
@@ -248,9 +262,9 @@ export function DeviceMap() {
           </DialogContent>
         </Dialog>
 
-        <div className="relative h-[500px] w-full overflow-hidden rounded-lg">
+        <div className="relative h-125 w-full overflow-hidden rounded-lg">
           {(movingMarkerId || isPickingLocationFor) && (
-            <div className="absolute left-1/2 top-4 z-[1000] flex -translate-x-1/2 items-center gap-3 rounded-lg bg-background px-4 py-2 shadow-lg">
+            <div className="absolute top-4 left-1/2 z-1000 flex -translate-x-1/2 items-center gap-3 rounded-lg bg-background px-4 py-2 shadow-lg">
               <span className="text-sm">
                 {isPickingLocationFor
                   ? "Click the map to choose the device location"
@@ -272,14 +286,12 @@ export function DeviceMap() {
               </Button>
             </div>
           )}
-          <Suspense
-            fallback={
-              <div className="flex h-full items-center justify-center">
-                Loading map...
-              </div>
-            }
-          >
-            <Map center={[-6.9175, 107.6191]} zoom={13}>
+          <Suspense fallback={<div className="flex h-full items-center justify-center">Loading map...</div>}>
+            <Map
+              center={[-6.9175, 107.6191]}
+              zoom={13}
+              className={isPickingLocationFor ? "location-picker-active" : undefined}
+            >
               <MapTileLayer />
               <MapClickHandler onMapClick={handleMapClick} />
               {markers.map((marker) => (
@@ -299,22 +311,33 @@ export function DeviceMap() {
                           {marker.type} · {marker.status}
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-t pt-2">
-                        <span className="text-muted-foreground">Battery</span>
-                        <span>{marker.telemetry.battery_level}%</span>
-                        <span className="text-muted-foreground">Signal</span>
-                        <span>{marker.telemetry.signal_strength} dBm</span>
-                        <span className="text-muted-foreground">
-                          Temperature
-                        </span>
-                        <span>{marker.telemetry.temperature} °C</span>
-                        <span className="text-muted-foreground">Last seen</span>
-                        <span>
-                          {new Date(
-                            marker.telemetry.last_seen
-                          ).toLocaleString()}
-                        </span>
-                      </div>
+                      {marker.telemetry ? (
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-t pt-2">
+                          <span className="text-muted-foreground">Battery</span>
+                          <span>{marker.telemetry.battery_level}%</span>
+                          <span className="text-muted-foreground">Signal</span>
+                          <span>{marker.telemetry.signal_strength} dBm</span>
+                          <span className="text-muted-foreground">Temperature</span>
+                          <span>{marker.telemetry.temperature} °C</span>
+                          <span className="text-muted-foreground">Last seen</span>
+                          <span>{new Date(marker.telemetry.last_seen).toLocaleString()}</span>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-t pt-2">
+                          {Object.entries(marker.attributes)
+                            .filter(
+                              ([, value]) =>
+                                typeof value === "string" || typeof value === "number" || typeof value === "boolean"
+                            )
+                            .map(([key, value]) => (
+                              <div key={key} className="contents">
+                                <span className="text-muted-foreground">{key.replace(/_/g, " ")}</span>
+                                <span>{String(value)}</span>
+                              </div>
+                            ))}
+                          <span className="col-span-2 text-muted-foreground">No telemetry available</span>
+                        </div>
+                      )}
                     </div>
                   </MapTooltip>
                 </MapMarker>

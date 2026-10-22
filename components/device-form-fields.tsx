@@ -12,12 +12,12 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import {
-  deviceStatuses,
-  deviceTypes,
-  type DeviceFormValues,
   isDeviceStatus,
   isDeviceType,
-} from "@/lib/device-schema"
+  deviceStatuses,
+  deviceTypes,
+} from "@/config/device-config"
+import type { DeviceFormValues } from "@/interface/device-interface"
 import { DeviceTypeDisplay } from "@/components/device-type-display"
 import { MapPin } from "lucide-react"
 

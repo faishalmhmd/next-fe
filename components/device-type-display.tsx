@@ -1,17 +1,10 @@
-import {
-  Camera,
-  Cpu,
-  Network,
-  Radio,
-  Zap,
-} from "lucide-react"
-import type { DeviceType } from "@/lib/device-schema"
+import { Camera, Cpu, Network, Radio, Zap } from "lucide-react"
 
 export function DeviceTypeIcon({
   type,
   className = "size-6 text-primary",
 }: {
-  type: DeviceType
+  type: string
   className?: string
 }) {
   switch (type) {
@@ -25,10 +18,12 @@ export function DeviceTypeIcon({
       return <Cpu className={className} />
     case "camera":
       return <Camera className={className} />
+    default:
+      return <Cpu className={className} />
   }
 }
 
-export function DeviceTypeDisplay({ type }: { type: DeviceType }) {
+export function DeviceTypeDisplay({ type }: { type: string }) {
   return (
     <span className="flex items-center gap-2">
       <DeviceTypeIcon type={type} className="size-4 text-primary" />

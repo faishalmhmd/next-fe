@@ -1,14 +1,26 @@
 import { Badge } from "@/components/ui/badge"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import type { DeviceRecord } from "@/interface/device-interface"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
-export function DeviceStatusTable() {
+const statusVariant = (status: string) => {
+  switch (status.toLowerCase()) {
+    case "active":
+      return "default" as const
+    case "warning":
+      return "secondary" as const
+    case "offline":
+      return "destructive" as const
+    default:
+      return "outline" as const
+  }
+}
+
+interface DeviceStatusTableProps {
+  devices: DeviceRecord[]
+  isLoading: boolean
+}
+
+export function DeviceStatusTable({ devices, isLoading }: DeviceStatusTableProps) {
   return (
     <Table>
       <TableHeader>
@@ -22,56 +34,32 @@ export function DeviceStatusTable() {
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow>
-          <TableCell className="font-medium">DEV-001</TableCell>
-          <TableCell>Temperature Sensor A1</TableCell>
-          <TableCell>Sensor</TableCell>
-          <TableCell>
-            <Badge variant="default">Online</Badge>
-          </TableCell>
-          <TableCell>Excellent</TableCell>
-          <TableCell>2 min ago</TableCell>
-        </TableRow>
-        <TableRow>
-          <TableCell className="font-medium">DEV-002</TableCell>
-          <TableCell>Smart Door Lock B2</TableCell>
-          <TableCell>Actuator</TableCell>
-          <TableCell>
-            <Badge variant="default">Online</Badge>
-          </TableCell>
-          <TableCell>Good</TableCell>
-          <TableCell>5 min ago</TableCell>
-        </TableRow>
-        <TableRow>
-          <TableCell className="font-medium">DEV-003</TableCell>
-          <TableCell>Lighting Controller C3</TableCell>
-          <TableCell>Controller</TableCell>
-          <TableCell>
-            <Badge variant="destructive">Offline</Badge>
-          </TableCell>
-          <TableCell>No Signal</TableCell>
-          <TableCell>2 hours ago</TableCell>
-        </TableRow>
-        <TableRow>
-          <TableCell className="font-medium">DEV-004</TableCell>
-          <TableCell>Humidity Sensor D4</TableCell>
-          <TableCell>Sensor</TableCell>
-          <TableCell>
-            <Badge variant="default">Online</Badge>
-          </TableCell>
-          <TableCell>Excellent</TableCell>
-          <TableCell>1 min ago</TableCell>
-        </TableRow>
-        <TableRow>
-          <TableCell className="font-medium">DEV-005</TableCell>
-          <TableCell>Security Camera E5</TableCell>
-          <TableCell>Camera</TableCell>
-          <TableCell>
-            <Badge variant="secondary">Maintenance</Badge>
-          </TableCell>
-          <TableCell>Fair</TableCell>
-          <TableCell>15 min ago</TableCell>
-        </TableRow>
+        {isLoading ? (
+          <TableRow>
+            <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+              Loading devices...
+            </TableCell>
+          </TableRow>
+        ) : devices.length === 0 ? (
+          <TableRow>
+            <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+              No devices found.
+            </TableCell>
+          </TableRow>
+        ) : (
+          devices.map((device) => (
+            <TableRow key={device.id}>
+              <TableCell className="font-medium">{device.id}</TableCell>
+              <TableCell>{device.name}</TableCell>
+              <TableCell className="capitalize">{device.type}</TableCell>
+              <TableCell>
+                <Badge variant={statusVariant(device.status)}>{device.status}</Badge>
+              </TableCell>
+              <TableCell>{device.telemetry ? `${device.telemetry.signal_strength} dBm` : "Unavailable"}</TableCell>
+              <TableCell>{device.telemetry?.last_seen ?? device.updated_at ?? "—"}</TableCell>
+            </TableRow>
+          ))
+        )}
       </TableBody>
     </Table>
   )

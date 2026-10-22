@@ -1,6 +1,5 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,13 +18,7 @@ interface MapContextMenuProps {
   children: React.ReactNode
 }
 
-export function MapContextMenu({
-  onEdit,
-  onMove,
-  onDelete,
-  onAddMarker,
-  children,
-}: MapContextMenuProps) {
+export function MapContextMenu({ onEdit, onMove, onDelete, onAddMarker, children }: MapContextMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [position, setPosition] = useState({ x: 0, y: 0 })
 
@@ -40,7 +33,7 @@ export function MapContextMenu({
       {children}
       {isOpen && (
         <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-          <DropdownMenuTrigger asChild>
+          <DropdownMenuTrigger>
             <div
               style={{
                 position: "fixed",
