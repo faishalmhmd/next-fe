@@ -2,7 +2,7 @@ import axios, { type AxiosResponse } from "axios"
 import type { DeviceFormValues, DeviceRecord } from "@/interface/device-interface"
 import { deviceRecordSchema } from "@/lib/device-schema"
 
-const API_BASE_URL = "/api"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
 const DEVICES_ENDPOINT = "/devices"
 
 export type DeviceOperation = "add" | "update" | "remove"
@@ -52,7 +52,14 @@ class DeviceService {
   })
   private devicesRequest: Promise<DeviceRecord[]> | null = null
 
+  private ensureApiUrl() {
+    if (!API_BASE_URL) {
+      throw new Error("NEXT_PUBLIC_API_URL is not configured.")
+    }
+  }
+
   fetchDevices(): Promise<DeviceRecord[]> {
+    this.ensureApiUrl()
     if (this.devicesRequest) {
       return this.devicesRequest
     }
@@ -81,6 +88,7 @@ class DeviceService {
     successMessage: string
   ): Promise<DeviceOperationResult> {
     try {
+      this.ensureApiUrl()
       const response = await request()
       return {
         success: true,
