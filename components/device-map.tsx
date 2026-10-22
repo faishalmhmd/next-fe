@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { DeviceFormFields } from "@/components/device-form-fields"
 import { DeviceTypeIcon } from "@/components/device-type-display"
+import { DeviceStatusBadge } from "@/components/device-status-badge"
 import { createDeviceFormDefaults } from "@/config/device-config"
 import { deviceSchema } from "@/lib/device-schema"
 import type { DeviceFormValues } from "@/interface/device-interface"
@@ -28,6 +29,28 @@ import { useMarkers } from "@/hooks/use-markers"
 function MapClickHandler({ onMapClick }: { onMapClick: (event: LeafletMouseEvent) => void }) {
   useMapEvents({ click: onMapClick })
   return null
+}
+
+function DeviceNodeInformation({ attributes }: { attributes: Record<string, unknown> }) {
+  const information = Object.entries(attributes).filter(
+    ([, value]) => typeof value === "string" || typeof value === "number" || typeof value === "boolean"
+  )
+
+  return (
+    <div className="grid gap-2 border-t pt-2">
+      <p className="font-medium">Node information</p>
+      {information.length > 0 ? (
+        information.map(([key, value]) => (
+          <div key={key} className="grid grid-cols-2 gap-2">
+            <span className="text-muted-foreground">{key.replace(/_/g, " ")}</span>
+            <span>{String(value)}</span>
+          </div>
+        ))
+      ) : (
+        <p className="text-muted-foreground">No node information available</p>
+      )}
+    </div>
+  )
 }
 
 export function DeviceMap({
@@ -307,10 +330,12 @@ export function DeviceMap({
                     <div className="grid gap-2">
                       <div>
                         <div className="font-semibold">{marker.name}</div>
-                        <div className="text-muted-foreground">
-                          {marker.type} · {marker.status}
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <span className="capitalize">{marker.type}</span>
+                          <DeviceStatusBadge status={marker.status} />
                         </div>
                       </div>
+                      <DeviceNodeInformation attributes={marker.attributes} />
                       {marker.telemetry ? (
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-t pt-2">
                           <span className="text-muted-foreground">Battery</span>
@@ -323,20 +348,7 @@ export function DeviceMap({
                           <span>{new Date(marker.telemetry.last_seen).toLocaleString()}</span>
                         </div>
                       ) : (
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-t pt-2">
-                          {Object.entries(marker.attributes)
-                            .filter(
-                              ([, value]) =>
-                                typeof value === "string" || typeof value === "number" || typeof value === "boolean"
-                            )
-                            .map(([key, value]) => (
-                              <div key={key} className="contents">
-                                <span className="text-muted-foreground">{key.replace(/_/g, " ")}</span>
-                                <span>{String(value)}</span>
-                              </div>
-                            ))}
-                          <span className="col-span-2 text-muted-foreground">No telemetry available</span>
-                        </div>
+                        <p className="border-t pt-2 text-muted-foreground">No telemetry available</p>
                       )}
                     </div>
                   </MapTooltip>

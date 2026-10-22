@@ -1,19 +1,6 @@
-import { Badge } from "@/components/ui/badge"
 import type { DeviceRecord } from "@/interface/device-interface"
+import { DeviceStatusBadge } from "@/components/device-status-badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-
-const statusVariant = (status: string) => {
-  switch (status.toLowerCase()) {
-    case "active":
-      return "default" as const
-    case "warning":
-      return "secondary" as const
-    case "offline":
-      return "destructive" as const
-    default:
-      return "outline" as const
-  }
-}
 
 interface DeviceStatusTableProps {
   devices: DeviceRecord[]
@@ -53,7 +40,7 @@ export function DeviceStatusTable({ devices, isLoading }: DeviceStatusTableProps
               <TableCell>{device.name}</TableCell>
               <TableCell className="capitalize">{device.type}</TableCell>
               <TableCell>
-                <Badge variant={statusVariant(device.status)}>{device.status}</Badge>
+                <DeviceStatusBadge status={device.status} />
               </TableCell>
               <TableCell>{device.telemetry ? `${device.telemetry.signal_strength} dBm` : "Unavailable"}</TableCell>
               <TableCell>{device.telemetry?.last_seen ?? device.updated_at ?? "—"}</TableCell>
