@@ -55,3 +55,12 @@ Rangkuman instruksi yang digunakan untuk AI prompt saya untuk project ini:
 Setelah AI membuat perubahan, hasilnya tetap ditinjau dan divalidasi. AI
 membantu implementasi; keputusan kebutuhan, arsitektur, dan penerimaan hasil
 tetap dilakukan oleh pengembang.
+
+
+penggunaan struktur project ini pake clean / modular
+- hook / composable
+- config 
+- schema
+- interfaces
+- services
+- store
