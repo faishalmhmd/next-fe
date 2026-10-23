@@ -1,48 +1,28 @@
-# Next.js template
-
-This is a Next.js template with shadcn/ui.
-
-## Adding components
-
-To add components to your app, run the following command:
+## Run Project Via Node js pnpm dengan syntax
 
 ```bash
-npx shadcn@latest add button
+pnpm dev
 ```
 
-This will place the ui components in the `components` directory.
+Open [http://localhost:3000](http://localhost:3000). For a production run,
+execute `pnpm build` followed by `pnpm start`.
 
-## Using components
-
-To use the components in your app, import them as follows:
-
-```tsx
-import { Button } from "@/components/ui/button"
-```
-
-## Build and publish Docker image locally
-
-The browser calls the backend directly, so configure `NEXT_PUBLIC_API_URL` to
-an address reachable by the user's browser. For a local browser and a backend
-running on the same host, use:
+## Run dengan docker
 
 ```bash
 docker build \
-  --build-arg NEXT_PUBLIC_API_URL=http://localhost:8080 \
+  --build-arg NEXT_PUBLIC_API_URL=http://localhost:8080/api \
   --tag faishalmhmd/next-fe:stage \
   .
 ```
+Stack  yang dipakai
+- Next
+- Typescript
+- Zod
+- Shadcn ui Map
+- Zustand
 
-Because this is a cross-origin request, the backend must allow the frontend
-origin (for example `http://localhost:3000`) and the required methods/headers
-through its CORS configuration. CORS cannot be enabled by adding a request
-header in the browser.
-
-Run it locally with:
-
-```bash
-docker run --rm -p 3000:3000 faishalmhmd/next-fe:stage
-```
-
-To publish it manually, log in with `docker login` and run
-`docker push faishalmhmd/next-fe:stage`.
+### Penggunaan next dan typescript di pakai untuk mempermudah routing dan pages 
+### penggunaan zod untuk validasi karena schema zod dibikin schme config dan interface ,, untuk mempermudah modularisasi form value
+### penggunaan shadcn ui dan shadcn ui map ini karena template bawaan / config bawaan sudah ada marker edit via draw control https://shadcn-map.vercel.app/docs/examples/draw-control
+### penggunaan zustand untuk state management menggunakan library ini karena hampir sama dengan penggunana nuxt store pinia dimana ada state, actions, getter & setter
